@@ -29,8 +29,7 @@ class ultraChatBot():
         return answer
 
     def temperature(self, chatID, text):
-        temperature = text
-        return f"Temperature set to {int(temperature)}"
+        return self.send_message(chatID, f"Temperature set to {int(text)}")
 
     def time(self, chatID):
         t = datetime.datetime.now()
@@ -56,10 +55,10 @@ Please type one of these commands:
 
 
     def Processingـincomingـmessages(self):
-        if self.dict_messages != []:
-            message =self.dict_messages
+        if self.dict_messages.lower() == "fermentation":
+            message = self.dict_messages
             text = message['body'].split("-")
-            if not message['fromMe']:
+            if self.message['fromMe']:
                 chatID  = message['from'] 
                 if text[0].lower() == 'set temp':
                     return self.temperature(chatID,text[1])
