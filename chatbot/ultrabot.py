@@ -1,6 +1,7 @@
 import json
 import requests
 import datetime
+import re
 
 class ultraChatBot():    
     def __init__(self, json):
@@ -20,12 +21,6 @@ class ultraChatBot():
         data = {"to" : chatID,
                 "body" : text}  
         answer = self.send_requests('messages/chat', data)
-        return answer
-
-    def send_image(self, chatID):
-        data = {"to" : chatID,
-                "image" : "https://file-example.s3-accelerate.amazonaws.com/images/test.jpeg"}  
-        answer = self.send_requests('messages/image', data)
         return answer
 
     def temperature(self, chatID, text):
@@ -55,7 +50,10 @@ Please type one of these commands:
 
 
     def Processingـincomingـmessages(self):
-        if self.dict_messages.lower() == "fermentation":
+        match = re.search(r"^(ferment\w*)\b.*\b(set\w*)\b.*\-(.*)", self.dict_messages.lower())
+        if match:
+            if match.group(2) == "temp":
+                return self.temperature(chatID,text[1])
             message = self.dict_messages
             text = message['body'].split("-")
             if self.message['fromMe']:
