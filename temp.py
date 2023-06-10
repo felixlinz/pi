@@ -20,28 +20,33 @@ def main():
     bus = smbus2.SMBus(port)
 
     calibration_params = bme280.load_calibration_params(bus, address)
-    open("roomconditions.csv", "w")
-    for _ in range(100):
-        time.sleep(0.2)
-        
+
+    filename = "roomconditions.csv"
+    open(filename, "w")
+    while True:
         data = bme280.sample(bus, address, calibration_params)
         
         with open("roomconditions.csv", "a") as file:
             writer = csv.writer(file)
             writer.writerow(list((data.timestamp, data.temperature, data.pressure, data.humidity)))
-    
+
+        time.sleep(60)
+
+
+
+def darstellung(filename):
     temps = []
     humids = []   
     times = []
-    with open("roomconditions.csv", "r") as file:
+    with open(filename, "r") as file:
         reader = csv.reader(file)
         for row in reader:
             temps.append(float(row[1]))
             humids.append(float(row[3]))
             times.append(datetime.datetime.strptime(row[0],"%Y-%m-%d %H:%M:%S.%f%z"))
             
+    # plt.plot(temps)
     plt.plot(temps)
-    plt.plot(humids)
     plt.xlabel("Time")
     plt.ylabel("Temps")
     plt.show()
