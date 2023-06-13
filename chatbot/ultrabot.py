@@ -61,7 +61,7 @@ Please type one of these commands:
         return f""" Current Climate Conditions, Dierksstrasse 17
         {int(data.temperature)} °C Temperature
         {int(data.humidity)} % Humidity
-      {int(data.pressure)} psi Ambient Pressure """
+    {int(data.pressure)} psi Ambient Pressure """
 
 
     
