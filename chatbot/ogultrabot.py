@@ -6,8 +6,8 @@ class ultraChatBot():
     def __init__(self, json):
         self.json = json
         self.dict_messages = json['data']
-        self.ultraAPIUrl = 'https://api.ultramsg.com/{{instance_id}}/'
-        self.token = '{{token}}'
+        self.ultraAPIUrl = 'https://api.ultramsg.com/instance49996/'
+        self.token = 'vyijsik2q818dbyp'
 
    
     def send_requests(self, type, data):
@@ -78,7 +78,7 @@ Please type one of these commands:
         return self.send_message(chatID, welcome_string)
 
 
-    def Processingـincomingـmessages(self):
+    def processingـincomingـmessages(self):
         if self.dict_messages != []:
             message =self.dict_messages
             text = message['body'].split()

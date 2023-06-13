@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from ogultrabot import ultraChatBot
+from ultrabot import ultraChatBot
 import json
 
 app = Flask(__name__)
@@ -8,7 +8,7 @@ app = Flask(__name__)
 def home():
     if request.method == 'POST':
         bot = ultraChatBot(request.json)
-        return bot.Processingـincomingـmessages()
+        return bot.processingـincomingـmessages()
 
 if(__name__) == '__main__':
     app.run()

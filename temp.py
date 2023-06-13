@@ -22,15 +22,12 @@ def main():
     calibration_params = bme280.load_calibration_params(bus, address)
 
     filename = "roomconditions.csv"
-    open(filename, "w")
-    while True:
-        data = bme280.sample(bus, address, calibration_params)
-        
-        with open("roomconditions.csv", "a") as file:
-            writer = csv.writer(file)
-            writer.writerow(list((data.timestamp, data.temperature, data.pressure, data.humidity)))
-
-        time.sleep(60)
+    data = bme280.sample(bus, address, calibration_params)
+    
+    print("Current Weather Conditions, Dierksstrasse 17")
+    print("   ",int(data.temperature), " °C  Temperature")
+    print("   ",int(data.humidity), " %   Humidity")
+    print(" ",int(data.pressure), " psi Ambient Pressure")
 
 
 
