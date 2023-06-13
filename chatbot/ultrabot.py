@@ -69,7 +69,7 @@ Please type one of these commands:
         message = self.dict_messages
         text = message["body"].lower()
         chatID = message["from"]
-        match = re.search(r"^(ferment)\b.*\b(set \w*|conditions)\b.*\-\s*(\d*)", text)
+        match = re.search(r"^(ferment)\b.*\b(set \w*|conditions|turn off)\b.*\-\s*(\d*)", text)
         if match:
             try:
                 if match.group(2) == "set temp":
@@ -83,12 +83,14 @@ Please type one of these commands:
                     return self.send_message(chatID, conditions)
                 elif match.group(2) == "set vent":
                     return self.send_message(chatID, f"Ventilation set to {match.group(3)} % of the Time Venting")
+                elif match.group(2) == "turn off":
+                    return self.send_message(chatID, f"Fermentation Chamber turned off, all bacteria dead")
             except ValueError:
                 return self.send_message(chatID, f"specified numeric value for {match.group(2)} wasn't specified correctly\nUse Numeric values without any extra Symbols")
         else: 
             attempt = re.search("^(ferment|fermentation)", text)
             if attempt:
-                return self.send_message(chatID,"Fermentation Chamber Please type one of these commands: *ferment* + \n*set temp- ?* \n*set temp- ?*\n*set humidity- ?*\n*set duration- ?*\n*turn off*\n*conditions-*\n*set vent- ?*\n*Avoid any °C, % or other Symbols*")
+                return self.send_message(chatID,"Fermentation Chamber Please type one of these commands: *ferment* + \n*set temp- ?* \n*set temp- ?*\n*set humidity- ?*\n*set duration- ?*\n*turn off-*\n*conditions-*\n*set vent- ?*\n*Avoid any °C, % or other Symbols*")
             
         
             
