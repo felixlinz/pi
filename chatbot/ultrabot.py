@@ -29,26 +29,6 @@ class ultraChatBot():
         answer = self.send_requests('messages/chat', data)
         return answer
 
-    def temperature(self, chatID, text):
-        return self.send_message(chatID, f"Temperature set to {int(text)}")
-
-    def welcome(self,chatID, noWelcome = False):
-        welcome_string = ''
-        if (noWelcome == False):
-            welcome_string = "Fermentation Chamber\n"
-        else:
-            welcome_string = """
-Fermentation Chamber
-            
-Please type one of these commands:
-*set temp- * 
-*set humidity- * 
-*set duration- *
-*turn off*
-"""
-        return self.send_message(chatID, welcome_string)
-
-
     def current_conditions(self):
         port = 1
         address = 0x76
@@ -63,14 +43,13 @@ Please type one of these commands:
         {int(data.humidity)} % Humidity
     {int(data.pressure)} psi Ambient Pressure """
 
-
-    
     def processingـincomingـmessages(self):
         message = self.dict_messages
         text = message["body"].lower()
         chatID = message["from"]
         match = re.search(r"^(ferment)\b.*\b(set \w*|conditions|turn off)\b.*\-\s*(\d*)", text)
         if match:
+            time.sleep(2)
             try:
                 if match.group(2) == "set temp":
                     return self.send_message(chatID, f"temperature set to {int(match.group(3))} Degrees")
@@ -87,11 +66,10 @@ Please type one of these commands:
                     return self.send_message(chatID, f"Fermentation Chamber turned off, all bacteria dead")
             except ValueError:
                 return self.send_message(chatID, f"specified numeric value for {match.group(2)} wasn't specified correctly\nUse Numeric values without any extra Symbols")
-        else: 
-            attempt = re.search("^(ferment|fermentation)", text)
-            if attempt:
-                return self.send_message(chatID,"Fermentation Chamber Please type one of these commands: *ferment* + \n*set temp- ?* \n*set temp- ?*\n*set humidity- ?*\n*set duration- ?*\n*turn off-*\n*conditions-*\n*set vent- ?*\n*Avoid any °C, % or other Symbols*")
-            
+        elif (attempt := re.search(r"^(ferment|fermentation)", text)):
+            return self.send_message(chatID,"Fermentation Chamber Please type one of these commands: *ferment* + \n*set temp- ?* \n*set temp- ?*\n*set humidity- ?*\n*set duration- ?*\n*turn off-*\n*conditions-*\n*set vent- ?*\n*Avoid any °C, % or other Symbols*\nfor example to set the temperature to 25 Degrees, the command woould be *ferment set temp- 25*")
+        elif re.search(r"^sesam öffne dich", text):
+            return self.send_message(chatID, "Schlüssel auf Strasse geworfen")
         
             
         
