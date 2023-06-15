@@ -25,7 +25,7 @@ def main():
     while True:
         data = bme280.sample(bus, address, calibration_params)
         
-        with open("roomconditions.csv", "a") as file:
+        with open("roomconditions.csv", "w") as file:
             writer = csv.writer(file)
             writer.writerow(list((data.timestamp, data.temperature, data.pressure, data.humidity)))
 

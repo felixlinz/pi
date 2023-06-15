@@ -25,7 +25,7 @@ def darstellung(filename):
         reader = csv.reader(file)
 
         for row in reader:
-            temps.append(row[1]) 
+            temps.append(float(row[1])) 
 
     # plt.plot(temps)
     plt.plot(temps)
