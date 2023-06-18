@@ -1,36 +1,35 @@
-import smbus2
-import bme280
 import csv
 import time
 import plotext as plt 
 from datetime import datetime
+import sys
 # the sample method will take a single reading and return a
-# compensated_reading object
-
-
-# the compensated_reading class has the following attributes
-
-# there is a handy string representation too
 
 
 def main():
-    darstellung("roomconditions.csv")
+    try:
+        for arg in sys.argv[1:]:
+            darstellung("roomconditions.csv", arg)
+    except IndexError:
+        darstellung("roomconditions.csv")
 
 
+def darstellung(filename, dataseries = None):
 
-def darstellung(filename):
-    temps = []
-    times = []
+    datatypes = {"temps":1,"humids":2,"presures":3}
+    if dataseries == None:
+        dataseries = "temps"
+    data = []
     with open(filename, "r") as file:
         reader = csv.reader(file)
 
         for row in reader:
-            temps.append(float(row[1])) 
+            data.append(float(row[datatypes[dataseries]])) 
 
     # plt.plot(temps)
-    plt.plot(temps)
+    plt.plot(data)
     plt.show()
             
         
-if __name__== "__main__":
+if __name__ == "__main__":
     main()
