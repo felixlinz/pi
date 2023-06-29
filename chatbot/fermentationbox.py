@@ -6,10 +6,15 @@ import smbus2
 import bme280
 import csv
 import time
+import RPi.GPIO as GPIO
 from dataclasses import dataclass
 
 class Fermenter:
     def __init__(self):
+        GPIO.setmode(GPIO.BCM)
+        self.heatpin = 11
+        self.fanpin = 7
+        self.humiditypin = 13
         self.conditions = self.current_conditions()
         self.targets = self.target()
         self.temperature = self.conditions.temperature
@@ -28,13 +33,26 @@ class Fermenter:
         bus = smbus2.SMBus(port)
 
         calibration_params = bme280.load_calibration_params(bus, address)
-        
         data = bme280.sample(bus, address, calibration_params)
+        
         return Conditions(int(data.temperature), int(data.humidity), str(datetime.now()), int(data.pressure))
+    
+    def core_conditions(self):
+        port = 2
+        address = 0x77
+        bus = smbus2.SMBus(port)
+        
+        calibration_params = bme280.load_calibration_params(bus, address)
+        data = bme280.sample(bus, address, calibration_params)
+        
+        return Conditions(int(data.temperature), int(data.humidity), str(datetime.now()), int(data.pressure))
+        
+        
 
 
     def target(self):
         with open("targets.csv", "r") as file:
+            row = {"temperature": 0, "humidity": 1, "datetime": 3}
             reader = csv.DictReader(file)
             for row in reader:
                 Targets = Conditions(row["temperature"], row["humidity"], row["datetime"], row["oxygen"])
@@ -43,10 +61,24 @@ class Fermenter:
 
     def adjust_temperature(self):
         while self.temperature < self.temptarget:
-            self.heatpin = True 
-            sleep(5)
+            GPIO.output(self.heatpin, GPIO.HIGH)
+            GPIO.output(self.fanpin, GPIO.HIGH)
+            time.sleep(5)
+            self.temperature = self.current_conditions().temperature
+        GPIO.output(self.heatpin, GPIO.LOW)
+        GPIO.output(self.fanpin, GPIO.LOW)
+        
+    def adjust_humidity(self):
+        while self.temperature < self.temptarget:
+            GPIO.output(self.heatpin, GPIO.HIGH)
+            GPIO.output(self.fanpin, GPIO.HIGH)
+            time.sleep(5)
+            self.humidity = self.current_conditions().humidity
+        GPIO.output(self.heatpin, GPIO.LOW)
+        GPIO.output(self.fanpin, GPIO.LOW)
 
-class NewFermenter(Fermenter):
+
+class NewFermenter():
     def __init__(self, temperature, humidity, duration, oxygen):
         self.note_targets(temperature, humidity, duration, oxygen)
 
@@ -57,6 +89,8 @@ class NewFermenter(Fermenter):
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerow({"temperature":int(temperature), "humidity":int(humidity), "datetime":enddate, "oxygen":int(oxygen)})
+        
+        return "targets.csv"
 
 @dataclass
 class Conditions:
