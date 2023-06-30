@@ -1,15 +1,28 @@
 import re
-import smbus2
-import bme280
 import csv
 import time
-import plotext as plt 
 import datetime
+from datetime import datetime, timedelta
+from dataclasses import dataclass
+
+@dataclass
+class Conditions:
+    temperature : int
+    humidity : int
+    enddate : datetime 
+
 
 def main():
+    
+    """
     while True:
         if (message:= processingـincomingـmessages(input("Message: "))):
             print(message)
+    """
+    
+    adjust_targets(temperature = int(input("temp:  ")))
+    adjust_targets(humidity = int(input("humid:  ")))
+    adjust_targets(duration = int(input("fermenation time in hours:  ")))
     
 
 def processingـincomingـmessages(text):
@@ -23,7 +36,7 @@ def processingـincomingـmessages(text):
             elif match.group(2) == "set duration":
                 return f"duration set to {int(match.group(3))} Hours"
             elif match.group(2) == "conditions":
-                return current_conditions()
+                return f"current conditions placeholder"
             elif match.group(2) == "set vent":
                 return f"Ventilation set to {match.group(3)} % of the Time Venting"
         except ValueError:
@@ -33,24 +46,27 @@ def processingـincomingـmessages(text):
         if attempt:
             return "Fermentation Chamber Please type one of these commands: *ferment* + \n*set temp- ?* \n*set temp- ?*\n*set humidity- ?*\n*set duration- ?*\n*turn off*\n*conditions-*\n*set vent- ?*\n*Avoid any °C, % or other Symbols*"
 
+def adjust_targets(temperature = None, humidity = None, duration = None):
+    with open ("__targets.csv__", "r") as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            temp = row["temperature"]
+            humid = row["humidity"]
+            enddate = row["enddate"]
+        targets = Conditions(temp, humid, enddate)
         
+    if temperature:
+        targets.temperature = temperature        
+    elif humidity:
+        targets.humidity = humidity        
+    elif duration:
+        targets.time = datetime.now() + timedelta(hours=duration)
         
-    
-    
-    
-def current_conditions():
-    port = 1
-    address = 0x76
-    bus = smbus2.SMBus(port)
-
-    calibration_params = bme280.load_calibration_params(bus, address)
-
-    data = bme280.sample(bus, address, calibration_params)
-    
-    return f"""Current Climate Conditions, Fermentation Chamber
-    {int(data.temperature)} °C Temperature
-    {int(data.humidity)} % Humidity
-    {int(data.pressure)} PSI Ambient Pressure """
+    with open("__targets.csv__", "w") as file:
+        fieldnames = ["temperature", "humidity", "enddate"]
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerow({"temperature":targets.temperature, "humidity":targets.humidity, "enddate":targets.enddate})
         
             
 if __name__=="__main__":

@@ -6,6 +6,7 @@ import smbus2
 import bme280
 import csv
 import time
+from fermentationbox import Fermenter
 
 
 
@@ -28,7 +29,7 @@ class ultraChatBot():
                 "body" : text}  
         answer = self.send_requests('messages/chat', data)
         return answer
-
+    
     def current_conditions(self):
         port = 1
         address = 0x76
@@ -41,7 +42,7 @@ class ultraChatBot():
         return f""" Current Climate Conditions, Dierksstrasse 17
         {int(data.temperature)} °C Temperature
         {int(data.humidity)} % Humidity
-    {int(data.pressure)} psi Ambient Pressure """
+        {int(data.pressure)} psi Ambient Pressure """
 
     def processingـincomingـmessages(self):
         message = self.dict_messages
