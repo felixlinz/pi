@@ -12,6 +12,9 @@ from threading import Thread
 import atexit
 
 class Fermenter:
+    """
+    representation of the Fermentain box 
+    """
     def __init__(self, heaptin = 11, fanpin = 7, humiditypin = 13):
         GPIO.setmode(GPIO.BCM)
         self._on = False
@@ -22,14 +25,23 @@ class Fermenter:
         self._exceptions = []
         atexit.register(self.cleanup)
         
+    
     def problemreport(self):
+        """
+        returns a list of all problems that occured during runtime
+        """
         if self._exceptions:
             response = f"The following problems occured {[exception for exception in self._exceptions]}"
+            # reset after reading them out
             self._exceptions = []
             return response
         return False
         
     def turn_on(self):
+        """
+        starts multiple threads that constantly monitor and adjust 
+        temperature and humidity
+        """
         self._on = True
         self.heatcontrol = Thread(target=self.reach_temperature)
         self.humiditycontrol = Thread(target=self.reach_humidity)
@@ -37,10 +49,16 @@ class Fermenter:
         self.humiditycontrol.start()
         
     def turn_off(self):
+        """
+        stops all processes, 
+        """
         self.adjust_targets(temperature=0, humidity=0, duration=0)
         self._on = False
 
     def default_program(self):
+        """
+        sets up a default program if no specific values where added 
+        """
         with open("__targets__.csv", "w") as file:
             fieldnames = ["temperature", "humidity", "enddate"]
             writer = csv.DictWriter(file, fieldnames = fieldnames)
@@ -50,6 +68,10 @@ class Fermenter:
             )
             
     def current_conditions(self):
+        """
+        returns a Dataclass Object containing the current conditions 
+        in the fermentation chamber
+        """
         port = 1
         address = 0x76
         bus = smbus2.SMBus(port)
@@ -61,6 +83,9 @@ class Fermenter:
     
     
     def target(self):
+        """
+        reads out the desired values for the conditions inside the box
+        """
         try:
             with open("__targets__.csv", "r") as file:
                 row = {"temperature": 0, "humidity": 1, "datetime": 3}
@@ -70,6 +95,9 @@ class Fermenter:
                 return Targets
             
         except FileNotFoundError as e:
+            """
+            in case there is nothing setup, a default programm gets loaded
+            """
             self._exceptions.append(e)
             self.default_program()
             with open("__targets__.csv", "r") as file:
@@ -81,12 +109,18 @@ class Fermenter:
             
     
     def check_finished(self):
+        """
+        checks if the fermentation process is done
+        """
         if datetime.now() > self.targets.time:
             return True
         return False
         
         
     def adjust_targets(self, temperature = None, humidity = None, duration = None):
+        """
+        manipulates the targets saved in tatgets csv file
+        """
         if self._on != True:
             self._on = True
         with open ("__targets__.csv", "r") as file:
@@ -109,11 +143,15 @@ class Fermenter:
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerow({"temperature":targets.temperature, "humidity":targets.humidity, "enddate":targets.enddate})
-        
+        # resetting targets
         self.targets = targets
             
 
     def reach_temperature(self):
+        """
+        loops over the target and current conditions and turns on 
+        the heat while its too cold
+        """
         temperature = self.current_conditions().temperature
         temptarget = self.target().temperature
         try:
@@ -125,6 +163,9 @@ class Fermenter:
             print(f"An error occurred in reach_temperature: {e}")
         
     def reach_humidity(self):
+        """
+        loops over tharget and current conditions and turns on the heat if its too cold
+        """
         humidity = self.current_conditions().humidity
         humidtarget = self.target().humidity
         try:
@@ -136,6 +177,9 @@ class Fermenter:
             print(f"An error occurred in reach_humidity: {e}")
             
     def reach_value(self, state, target, controlpin, parameter):
+        """
+        used by reach heat and reach humidity to reach conditions
+        """
         if state < target:
             if parameter == "temperature":
                 GPIO.output(self.fanpin, GPIO.HIGH)
@@ -166,18 +210,29 @@ class Fermenter:
             return False
             
     def cleanup(self):
+        """
+        resetts all the GPIO Pins after the programm crashed
+        """
         GPIO.cleanup()
 
 
 
 @dataclass
 class Conditions:
+    """
+    representation of Conditions the chamber can have
+    """
     temperature : int
     humidity : int
     enddate : datetime 
 
 class ChatBox():    
+    """
+    chatbot representation of fermentation chamber
+    takes a Fermenter Object to interact with 
+    """
     def __init__(self, json, fermenter, connection_url, token):
+        # takes Fermenter Object 
         self.fermenter = fermenter
         self.json = json
         self.dict_messages = json['data']
@@ -186,6 +241,9 @@ class ChatBox():
 
    
     def send_requests(self, type, data):
+        """
+        stay away
+        """
         url = f"{self.ultraAPIUrl}{type}?token={self.token}"
         headers = {'Content-type': 'application/json'}
         answer = requests.post(url, data=json.dumps(data), headers=headers)
@@ -193,6 +251,9 @@ class ChatBox():
     
 
     def send_message(self, chatID, text):
+        """
+        can be used to send a message to a chatID, takes a string as text
+        """
         if chatID == "unknown":
             chatID = self.dict_messages["from"]
         data = {"to" : chatID,
@@ -202,6 +263,10 @@ class ChatBox():
     
     
     def processingـincomingـmessages(self):
+        """
+        default response vehicle for incoming "fermenter"
+        chat requests
+        """
         message = self.dict_messages
         text = message["body"].lower()
         chatID = message["from"]
