@@ -16,13 +16,13 @@ class Fermenter:
     representation of the Fermentain box 
     """
     def __init__(self, heaptin = 11, fanpin = 7, humiditypin = 13):
+        self._exceptions = []
         GPIO.setmode(GPIO.BCM)
         self._on = False
         self.targets = self.target()
         self.heatpin = heaptin
         self.fanpin = fanpin
         self.humiditypin = humiditypin
-        self._exceptions = []
         atexit.register(self.cleanup)
         
     
@@ -50,7 +50,7 @@ class Fermenter:
         
     def turn_off(self):
         """
-        stops all processes, 
+        stops all processes
         """
         self.adjust_targets(temperature=0, humidity=0, duration=0)
         self._on = False
@@ -91,7 +91,7 @@ class Fermenter:
                 row = {"temperature": 0, "humidity": 1, "datetime": 3}
                 reader = csv.DictReader(file)
                 for row in reader:
-                    Targets = Conditions(row["temperature"], row["humidity"], row["datetime"], row["oxygen"])
+                    Targets = Conditions(row["temperature"], row["humidity"], row["enddate"])
                 return Targets
             
         except FileNotFoundError as e:
@@ -104,7 +104,7 @@ class Fermenter:
                 row = {"temperature": 0, "humidity": 1, "datetime": 3}
                 reader = csv.DictReader(file)
                 for row in reader:
-                    Targets = Conditions(row["temperature"], row["humidity"], row["datetime"], row["oxygen"])
+                    Targets = Conditions(row["temperature"], row["humidity"], row["enddate"], row["oxygen"])
                 return Targets
             
     
