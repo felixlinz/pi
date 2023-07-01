@@ -1,5 +1,6 @@
 import requests
 from datetime import datetime, timedelta
+import pygal
 import smbus2
 import json
 import bme280
@@ -10,10 +11,6 @@ import re
 from dataclasses import dataclass
 from threading import Thread
 import atexit
-import numpy as np 
-import pandas as pd
-import matplotlib.pyplot as plt 
-import matplotlib.dates as mdates
 
 
 class Fermenter:
@@ -21,11 +18,11 @@ class Fermenter:
     representation of the Fermentain box 
     """
     def __init__(self, heaptin = 11, fanpin = 7, humiditypin = 13):
+        self.default_program()
         self._exceptions = []
         self.logfile = self.empty_logfile()
         GPIO.setmode(GPIO.BCM)
         self._on = False
-        self.targets = self.target()
         self.heatpin = heaptin
         self.fanpin = fanpin
         self.humiditypin = humiditypin
@@ -58,7 +55,7 @@ class Fermenter:
         """
         stops all processes
         """
-        self.adjust_targets(temperature=0, humidity=0, duration=0)
+        self.adjust_targets(temperature=0, humidity=0)
         self._on = False
 
     def default_program(self):
@@ -88,13 +85,13 @@ class Fermenter:
         with open(self.logfile,"a") as file:
             fieldnames = ["temperature", "humidity", "sampledate"]
             writer = csv.DictWriter(file, fieldnames=fieldnames)
-            writer.writerow("temperature":data.temperature, "humidity":data.humidity, "sampledate":datetime.now())
+            writer.writerow({"temperature":data.temperature, "humidity":data.humidity, "sampledate":datetime.now()})
         
-        return Conditions(int(data.temperature), int(data.humidity), datetime.now(), int(data.pressure))
+        return Conditions(int(data.temperature), int(data.humidity), datetime.now())
     
     
-    def empy_logfile(self):
-        with open("__conditionslog.csv","w"):
+    def empty_logfile(self):
+        with open("__conditionslog.csv","w") as file:
             fieldnames = ["temperature", "humidity", "sampledate"]
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
@@ -110,8 +107,8 @@ class Fermenter:
                 row = {"temperature": 0, "humidity": 1, "datetime": 3}
                 reader = csv.DictReader(file)
                 for row in reader:
-                    Targets = Conditions(row["temperature"], row["humidity"], row["enddate"])
-                return Targets
+                    target = Conditions(int(row["temperature"]), int(row["humidity"]), datetime.strptime(row["enddate"], "%Y-%m-%d %H:%M:%S.%f"))
+                return target
             
         except FileNotFoundError as e:
             """
@@ -123,8 +120,8 @@ class Fermenter:
                 row = {"temperature": 0, "humidity": 1, "datetime": 3}
                 reader = csv.DictReader(file)
                 for row in reader:
-                    Targets = Conditions(row["temperature"], row["humidity"], row["enddate"], row["oxygen"])
-                return Targets
+                    target = Conditions(int(row["temperature"]), int(row["humidity"]), datetime.strptime(row["enddate"], "%Y-%m-%d %H:%M:%S.%f"))
+                return target
             
     
     def check_finished(self):
@@ -148,7 +145,7 @@ class Fermenter:
                 temp = row["temperature"]
                 humid = row["humidity"]
                 enddate = row["enddate"]
-            targets = Conditions(temp, humid, enddate)
+            targets = Conditions(int(temp), int(humid), datetime.strptime(enddate,"%Y-%m-%d %H:%M:%S.%f"))
             
         if temperature:
             targets.temperature = temperature        
@@ -181,6 +178,7 @@ class Fermenter:
             self.turn_off()
             print(f"An error occurred in reach_temperature: {e}")
         
+        
     def reach_humidity(self):
         """
         loops over tharget and current conditions and turns on the heat if its too cold
@@ -194,6 +192,7 @@ class Fermenter:
             self._exceptions.append(e)
             self.turn_off()
             print(f"An error occurred in reach_humidity: {e}")
+            
             
     def reach_value(self, state, target, controlpin, parameter):
         """
@@ -232,48 +231,38 @@ class Fermenter:
         """
         returns location of a jpeg with plots of the eveolvement of the conditions
         """
-        data = pd.read_csv(self.logfile)
-        
-        # Convert 'sampledate' column to datetime type
-        data['sampledate'] = pd.to_datetime(data['sampledate'])
+        temperatures = []
+        humidities = []
+        dates = []
 
-        # Create a figure and axis objects
-        fig, ax1 = plt.subplots()
-
-        # Plot temperature data
-        color = 'tab:red'
-        ax1.set_xlabel('Time')
-        ax1.set_ylabel('Temperature', color=color)
-        ax1.plot(data['sampledate'], data['temperature'], color=color)
-        ax1.tick_params(axis='y', labelcolor=color)
-
-        # Create a second y-axis for the humidity data
-        ax2 = ax1.twinx()
-
-        color = 'tab:blue'
-        ax2.set_ylabel('Humidity', color=color)
-        ax2.plot(data['sampledate'], data['humidity'], color=color)
-        ax2.tick_params(axis='y', labelcolor=color)
-
-        # Format x-axis to display dates properly
-        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
-
-        # Rotate and align the x labels so they look better
-        fig.autofmt_xdate()
-
-        # Save the figure as a JPEG
-        plt.savefig('conditions_plot.jpg', format='jpeg')
-        
-        return "conditions_plot.jpg"
-
-
-        
-        
+        # Open your CSV file
+        with open('yourfile.csv', 'r') as csvfile:
+            reader = csv.DictReader(csvfile)
             
+            for row in reader:
+                # Convert date from string to datetime object
+                date = datetime.strptime(row['sampledate'], "%Y-%m-%d %H:%M:%S.%f")  # Adapt date format if needed
+                
+                temperatures.append(float(row['temperature']))
+                humidities.append(float(row['humidity']))
+                dates.append(date)
+
+        # Creating a line chart
+        line_chart = pygal.Line(x_label_rotation=20)
+        line_chart.title = 'Temperature and Humidity over Time'
+        line_chart.x_labels = dates
+        line_chart.add('Temperature', temperatures)
+        line_chart.add('Humidity', humidities)
+
+        # Save the svg to a file
+        line_chart.render_to_file('line_chart.svg')
+
+                         
     def cleanup(self):
         """
         resetts all the GPIO Pins after the programm crashed
         """
+        self.default_program()
         GPIO.cleanup()
 
 
@@ -286,6 +275,8 @@ class Conditions:
     temperature : int
     humidity : int
     enddate : datetime 
+
+
 
 class ChatBox():    
     """
