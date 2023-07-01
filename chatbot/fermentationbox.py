@@ -10,6 +10,11 @@ import re
 from dataclasses import dataclass
 from threading import Thread
 import atexit
+import numpy as np 
+import pandas as pd
+import matplotlib.pyplot as plt 
+import matplotlib.dates as mdates
+
 
 class Fermenter:
     """
@@ -17,6 +22,7 @@ class Fermenter:
     """
     def __init__(self, heaptin = 11, fanpin = 7, humiditypin = 13):
         self._exceptions = []
+        self.logfile = self.empty_logfile()
         GPIO.setmode(GPIO.BCM)
         self._on = False
         self.targets = self.target()
@@ -79,9 +85,22 @@ class Fermenter:
         calibration_params = bme280.load_calibration_params(bus, address)
         data = bme280.sample(bus, address, calibration_params)
         
+        with open(self.logfile,"a") as file:
+            fieldnames = ["temperature", "humidity", "sampledate"]
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writerow("temperature":data.temperature, "humidity":data.humidity, "sampledate":datetime.now())
+        
         return Conditions(int(data.temperature), int(data.humidity), datetime.now(), int(data.pressure))
     
     
+    def empy_logfile(self):
+        with open("__conditionslog.csv","w"):
+            fieldnames = ["temperature", "humidity", "sampledate"]
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writeheader()
+        return "__conditionslog.csv"
+            
+            
     def target(self):
         """
         reads out the desired values for the conditions inside the box
@@ -121,8 +140,8 @@ class Fermenter:
         """
         manipulates the targets saved in tatgets csv file
         """
-        if self._on != True:
-            self._on = True
+        # make sure the box is on 
+        self._on = True
         with open ("__targets__.csv", "r") as file:
             reader = csv.DictReader(file)
             for row in reader:
@@ -208,6 +227,48 @@ class Fermenter:
                 state = self.current_conditions().humidity
                 target = self.targets.humidity
             return False
+        
+    def datalog(self):
+        """
+        returns location of a jpeg with plots of the eveolvement of the conditions
+        """
+        data = pd.read_csv(self.logfile)
+        
+        # Convert 'sampledate' column to datetime type
+        data['sampledate'] = pd.to_datetime(data['sampledate'])
+
+        # Create a figure and axis objects
+        fig, ax1 = plt.subplots()
+
+        # Plot temperature data
+        color = 'tab:red'
+        ax1.set_xlabel('Time')
+        ax1.set_ylabel('Temperature', color=color)
+        ax1.plot(data['sampledate'], data['temperature'], color=color)
+        ax1.tick_params(axis='y', labelcolor=color)
+
+        # Create a second y-axis for the humidity data
+        ax2 = ax1.twinx()
+
+        color = 'tab:blue'
+        ax2.set_ylabel('Humidity', color=color)
+        ax2.plot(data['sampledate'], data['humidity'], color=color)
+        ax2.tick_params(axis='y', labelcolor=color)
+
+        # Format x-axis to display dates properly
+        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
+
+        # Rotate and align the x labels so they look better
+        fig.autofmt_xdate()
+
+        # Save the figure as a JPEG
+        plt.savefig('conditions_plot.jpg', format='jpeg')
+        
+        return "conditions_plot.jpg"
+
+
+        
+        
             
     def cleanup(self):
         """
@@ -270,7 +331,7 @@ class ChatBox():
         message = self.dict_messages
         text = message["body"].lower()
         chatID = message["from"]
-        match = re.search(r"^(ferment)\b.*\b(set \w*|conditions|turn off|turn on|targets)\b.*\-\s*(\d*)", text)
+        match = re.search(r"^(ferment)\b.*\b(set \w*|conditions|turn off|turn on|targets|history)\b.*\-\s*(\d*)", text)
         if match:
             try:
                 
@@ -308,6 +369,10 @@ class ChatBox():
                 elif match.group(2) == "turn on":
                     self.fermenter.turn_on()
                     return self.send_message(chatID, f"Fermentation Chamber turned off, all bacteria dead")
+                
+                elif match.group(2) == "history":
+                    image = self.fermenter.datalog()
+                    return self.send_image(chatID, image)
                 
             except ValueError:
                 return self.send_message(chatID, f"specified numeric value for {match.group(2)} wasn't specified correctly\nUse Numeric values without any extra Symbols")

@@ -16,15 +16,14 @@ def main():
 
 def darstellung(filename, dataseries = None):
 
-    datatypes = {"temps":1,"humids":2,"presures":3}
     if dataseries == None:
         dataseries = "temps"
     data = []
     with open(filename, "r") as file:
-        reader = csv.reader(file)
+        reader = csv.DictReader(file)
 
         for row in reader:
-            data.append(float(row[datatypes[dataseries]])) 
+            data.append(float(row[dataseries])) 
 
     # plt.plot(temps)
     plt.plot(data)

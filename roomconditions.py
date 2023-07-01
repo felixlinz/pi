@@ -22,14 +22,18 @@ def main():
     calibration_params = bme280.load_calibration_params(bus, address)
 
     filename = "roomconditions.csv"
+    with open("roomconditions.csv", "w") as file:
+        fieldnames = ["time", "temp", "pressure", "humidity"]
+        writer = csv.DictWriter(file,fieldnames=fieldnames)
+        writer.writeheader()
     while True:
         data = bme280.sample(bus, address, calibration_params)
         
-        with open("roomconditions.csv", "w") as file:
-            writer = csv.writer(file)
-            writer.writerow(list((data.timestamp, data.temperature, data.pressure, data.humidity)))
+        with open("roomconditions.csv", "a") as file:
+            writer = csv.DictWriter(file, fieldnames)
+            writer.writerow({"time":data.timestamp, "temp":data.temperature, "pressure":data.pressure, "humidity":data.humidity})
 
-        time.sleep(60)
+        time.sleep(1)
 
 
 
