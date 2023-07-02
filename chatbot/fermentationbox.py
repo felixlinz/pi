@@ -21,11 +21,15 @@ class Fermenter:
         self.default_program()
         self._exceptions = []
         self.logfile = self.empty_logfile()
-        GPIO.setmode(GPIO.BCM)
+        GPIO.setmode(GPIO.BOARD)
         self._on = False
-        self.heatpin = heaptin
+        self.targets = self.target()
+        self.heatpin = heaptin 
         self.fanpin = fanpin
         self.humiditypin = humiditypin
+        GPIO.setup(self.heatpin,GPIO.OUT)
+        GPIO.setup(self.fanpin,GPIO.OUT)
+        GPIO.setup(self.humiditypin,GPIO.OUT)
         atexit.register(self.cleanup)
         
     
@@ -55,7 +59,7 @@ class Fermenter:
         """
         stops all processes
         """
-        self.adjust_targets(temperature=0, humidity=0)
+        self.adjust_targets(temperature=0)
         self._on = False
 
     def default_program(self):
@@ -104,11 +108,12 @@ class Fermenter:
         """
         try:
             with open("__targets__.csv", "r") as file:
-                row = {"temperature": 0, "humidity": 1, "datetime": 3}
                 reader = csv.DictReader(file)
                 for row in reader:
                     target = Conditions(int(row["temperature"]), int(row["humidity"]), datetime.strptime(row["enddate"], "%Y-%m-%d %H:%M:%S.%f"))
+                self.targets = target
                 return target
+            
             
         except FileNotFoundError as e:
             """
@@ -121,7 +126,9 @@ class Fermenter:
                 reader = csv.DictReader(file)
                 for row in reader:
                     target = Conditions(int(row["temperature"]), int(row["humidity"]), datetime.strptime(row["enddate"], "%Y-%m-%d %H:%M:%S.%f"))
+                self.targets = target
                 return target
+            
             
     
     def check_finished(self):
@@ -159,7 +166,7 @@ class Fermenter:
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerow({"temperature":targets.temperature, "humidity":targets.humidity, "enddate":targets.enddate})
-        # resetting targets
+            
         self.targets = targets
             
 
@@ -206,10 +213,10 @@ class Fermenter:
             
             if parameter == "temperature":
                 state = self.current_conditions().temperature
-                target = self.targets.temperature
+                target = self.target().temperature
             elif parameter == "humidity":
                 state = self.current_conditions().humidity
-                target = self.targets.humidity
+                target = self.target().humidity
             return True
                 
             
