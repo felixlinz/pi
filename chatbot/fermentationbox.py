@@ -17,14 +17,15 @@ class Fermenter:
     """
     representation of the Fermentain box 
     """
-    def __init__(self, heaptin = 11, fanpin = 7, humiditypin = 13):
+    def __init__(self, heaptin = 14, fanpin = 15, humiditypin = 13):
         self.default_program()
         self._exceptions = []
         self.logfile = self.empty_logfile()
-        GPIO.setmode(GPIO.BOARD)
+        GPIO.setmode(GPIO.BCM)
         self._on = False
-        self.targets = self.target()
+        self.target()
         self.heatpin = heaptin 
+        self.current_conditions()
         self.fanpin = fanpin
         self.humiditypin = humiditypin
         GPIO.setup(self.heatpin,GPIO.OUT)
@@ -51,15 +52,14 @@ class Fermenter:
         """
         self._on = True
         self.heatcontrol = Thread(target=self.reach_temperature)
-        self.humiditycontrol = Thread(target=self.reach_humidity)
+        #self.humiditycontrol = Thread(target=self.reach_humidity)
         self.heatcontrol.start()
-        self.humiditycontrol.start()
+        #self.humiditycontrol.start()
         
     def turn_off(self):
         """
         stops all processes
         """
-        self.adjust_targets(temperature=0)
         self._on = False
 
     def default_program(self):
@@ -91,7 +91,8 @@ class Fermenter:
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writerow({"temperature":data.temperature, "humidity":data.humidity, "sampledate":datetime.now()})
         
-        return Conditions(int(data.temperature), int(data.humidity), datetime.now())
+        self.conditions = Conditions(int(data.temperature), int(data.humidity), datetime.now())
+        return self.conditions
     
     
     def empty_logfile(self):
@@ -112,7 +113,6 @@ class Fermenter:
                 for row in reader:
                     target = Conditions(int(row["temperature"]), int(row["humidity"]), datetime.strptime(row["enddate"], "%Y-%m-%d %H:%M:%S.%f"))
                 self.targets = target
-                return target
             
             
         except FileNotFoundError as e:
@@ -127,7 +127,7 @@ class Fermenter:
                 for row in reader:
                     target = Conditions(int(row["temperature"]), int(row["humidity"]), datetime.strptime(row["enddate"], "%Y-%m-%d %H:%M:%S.%f"))
                 self.targets = target
-                return target
+
             
             
     
@@ -161,12 +161,6 @@ class Fermenter:
         if duration:
             targets.time = datetime.now() + timedelta(hours=duration)
             
-        with open("__targets__.csv", "w") as file:
-            fieldnames = ["temperature", "humidity", "enddate"]
-            writer = csv.DictWriter(file, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerow({"temperature":targets.temperature, "humidity":targets.humidity, "enddate":targets.enddate})
-            
         self.targets = targets
             
 
@@ -175,64 +169,53 @@ class Fermenter:
         loops over the target and current conditions and turns on 
         the heat while its too cold
         """
-        temperature = self.current_conditions().temperature
-        temptarget = self.target().temperature
         try:
             while self._on == True:
-                self.reach_value(temperature,temptarget,self.heatpin,"temperature")
+                temperature = self.current_conditions().temperature
+                temptarget = self.target().temperature
+                
+                if temperature < temptarget:
+                    GPIO.output(self.fanpin, GPIO.HIGH)
+                    GPIO.output(self.heatpin, GPIO.HIGH)
+                    
+                elif temperature > temptarget:
+                    GPIO.output(self.fanpin, GPIO.LOW)
+                    GPIO.output(self.heatpin, GPIO.LOW)
+                   
+                time.sleep(5) 
+                    
         except Exception as e:
             self._exceptions.append(e)
             self.turn_off()
-            print(f"An error occurred in reach_temperature: {e}")
+            print(f"An error occurred in reach_humidity: {e}")
         
         
     def reach_humidity(self):
         """
         loops over tharget and current conditions and turns on the heat if its too cold
         """
-        humidity = self.current_conditions().humidity
-        humidtarget = self.target().humidity
+
         try:
             while self._on == True:
-                self.reach_value(humidity, humidtarget, self.humiditypin, "humidity")
+                humidity = self.current_conditions().humidity
+                humidtarget = self.target().humidity
+                
+                if humidity < humidtarget:
+                    GPIO.output(self.fanpin, GPIO.HIGH)
+                    GPIO.output(self.humiditypin, GPIO.HIGH)
+                    
+                elif humidity > humidtarget:
+                    GPIO.output(self.fanpin, GPIO.LOW)
+                    GPIO.output(self.humiditypin, GPIO.LOW)
+
+                time.sleep(5)
+                    
         except Exception as e:
             self._exceptions.append(e)
             self.turn_off()
             print(f"An error occurred in reach_humidity: {e}")
             
             
-    def reach_value(self, state, target, controlpin, parameter):
-        """
-        used by reach heat and reach humidity to reach conditions
-        """
-        if state < target:
-            if parameter == "temperature":
-                GPIO.output(self.fanpin, GPIO.HIGH)
-            GPIO.output(controlpin, GPIO.HIGH)
-            time.sleep(5)
-            
-            if parameter == "temperature":
-                state = self.current_conditions().temperature
-                target = self.target().temperature
-            elif parameter == "humidity":
-                state = self.current_conditions().humidity
-                target = self.target().humidity
-            return True
-                
-            
-        elif state > target:
-            if parameter == "temperature":
-                GPIO.output(self.fanpin, GPIO.LOW)
-            GPIO.output(controlpin, GPIO.LOW)
-            time.sleep(5)
-            
-            if parameter == "temperature":
-                state = self.current_conditions().temperature
-                target = self.targets.temperature
-            elif parameter == "humidity":
-                state = self.current_conditions().humidity
-                target = self.targets.humidity
-            return False
         
     def datalog(self):
         """
@@ -243,7 +226,7 @@ class Fermenter:
         dates = []
 
         # Open your CSV file
-        with open('yourfile.csv', 'r') as csvfile:
+        with open('datalog.csv', 'r') as csvfile:
             reader = csv.DictReader(csvfile)
             
             for row in reader:
