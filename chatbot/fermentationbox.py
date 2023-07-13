@@ -18,12 +18,11 @@ class Fermenter:
     representation of the Fermentain box 
     """
     def __init__(self, heaptin = 14, fanpin = 15, humiditypin = 13):
-        self.default_program()
         self._exceptions = []
         self.logfile = self.empty_logfile()
         GPIO.setmode(GPIO.BCM)
         self._on = False
-        self.target()
+        self.targets = self.initial_targets()
         self.heatpin = heaptin 
         self.current_conditions()
         self.fanpin = fanpin
@@ -51,10 +50,9 @@ class Fermenter:
         temperature and humidity
         """
         self._on = True
-        self.heatcontrol = Thread(target=self.reach_temperature)
-        #self.humiditycontrol = Thread(target=self.reach_humidity)
-        self.heatcontrol.start()
-        #self.humiditycontrol.start()
+        self.conditionscontrol = Thread(target=self.reach_conditions)
+        self.conditioncontrol.start()
+      
         
     def turn_off(self):
         """
@@ -62,17 +60,6 @@ class Fermenter:
         """
         self._on = False
 
-    def default_program(self):
-        """
-        sets up a default program if no specific values where added 
-        """
-        with open("__targets__.csv", "w") as file:
-            fieldnames = ["temperature", "humidity", "enddate"]
-            writer = csv.DictWriter(file, fieldnames = fieldnames)
-            writer.writeheader()
-            writer.writerow(
-                {"temperature":28, "humidity":85, "enddate": datetime.now()  + timedelta(hours=48)}
-            )
             
     def current_conditions(self):
         """
@@ -103,34 +90,13 @@ class Fermenter:
         return "__conditionslog.csv"
             
             
-    def target(self):
+    def initial_targets(self):
         """
         reads out the desired values for the conditions inside the box
         """
-        try:
-            with open("__targets__.csv", "r") as file:
-                reader = csv.DictReader(file)
-                for row in reader:
-                    target = Conditions(int(row["temperature"]), int(row["humidity"]), datetime.strptime(row["enddate"], "%Y-%m-%d %H:%M:%S.%f"))
-                self.targets = target
-            
-            
-        except FileNotFoundError as e:
-            """
-            in case there is nothing setup, a default programm gets loaded
-            """
-            self._exceptions.append(e)
-            self.default_program()
-            with open("__targets__.csv", "r") as file:
-                row = {"temperature": 0, "humidity": 1, "datetime": 3}
-                reader = csv.DictReader(file)
-                for row in reader:
-                    target = Conditions(int(row["temperature"]), int(row["humidity"]), datetime.strptime(row["enddate"], "%Y-%m-%d %H:%M:%S.%f"))
-                self.targets = target
+        return Conditions(int(28), int(80), datetime.now() + timedelta(hours=48))
 
             
-            
-    
     def check_finished(self):
         """
         checks if the fermentation process is done
@@ -146,14 +112,7 @@ class Fermenter:
         """
         # make sure the box is on 
         self._on = True
-        with open ("__targets__.csv", "r") as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                temp = row["temperature"]
-                humid = row["humidity"]
-                enddate = row["enddate"]
-            targets = Conditions(int(temp), int(humid), datetime.strptime(enddate,"%Y-%m-%d %H:%M:%S.%f"))
-            
+        targets = self.targets
         if temperature:
             targets.temperature = temperature        
         if humidity:
@@ -164,15 +123,16 @@ class Fermenter:
         self.targets = targets
             
 
-    def reach_temperature(self):
+    def reach_conditions(self):
         """
         loops over the target and current conditions and turns on 
         the heat while its too cold
         """
         try:
-            while self._on == True:
-                temperature = self.current_conditions().temperature
-                temptarget = self.target().temperature
+            while self._on == True and not self.check_finished():
+                conditions = self.current_conditions()
+                temperature, humidity = conditions.temperature, conditions.humidity
+                temptarget, humidtarget = self.targets.temperature, self.targets.humidity
                 
                 if temperature < temptarget:
                     GPIO.output(self.fanpin, GPIO.HIGH)
@@ -181,41 +141,22 @@ class Fermenter:
                 elif temperature > temptarget:
                     GPIO.output(self.fanpin, GPIO.LOW)
                     GPIO.output(self.heatpin, GPIO.LOW)
-                   
-                time.sleep(5) 
                     
-        except Exception as e:
-            self._exceptions.append(e)
-            self.turn_off()
-            print(f"An error occurred in reach_humidity: {e}")
-        
-        
-    def reach_humidity(self):
-        """
-        loops over tharget and current conditions and turns on the heat if its too cold
-        """
-
-        try:
-            while self._on == True:
-                humidity = self.current_conditions().humidity
-                humidtarget = self.target().humidity
-                
                 if humidity < humidtarget:
                     GPIO.output(self.fanpin, GPIO.HIGH)
                     GPIO.output(self.humiditypin, GPIO.HIGH)
                     
                 elif humidity > humidtarget:
-                    GPIO.output(self.fanpin, GPIO.LOW)
                     GPIO.output(self.humiditypin, GPIO.LOW)
-
-                time.sleep(5)
+                    
+                time.sleep(5) 
+                    
                     
         except Exception as e:
             self._exceptions.append(e)
             self.turn_off()
-            print(f"An error occurred in reach_humidity: {e}")
-            
-            
+            print(f"An error occurred in reach_conditions: {e}")
+        
         
     def datalog(self):
         """
@@ -246,13 +187,13 @@ class Fermenter:
 
         # Save the svg to a file
         line_chart.render_to_file('line_chart.svg')
+        return "line_chart.svg"
 
                          
     def cleanup(self):
         """
         resetts all the GPIO Pins after the programm crashed
         """
-        self.default_program()
         GPIO.cleanup()
 
 
@@ -337,11 +278,11 @@ class ChatBox():
                     return self.send_message(chatID, conditions), f"{targets.enddate - conditions.enddate} time left over"
                 
                 elif match.group(2) == "targets":
-                    targets = self.fermenter.target()
-                    return self.send_message(chatID, targets)
+                    string = f"Aiming to reach {self.fermenter.targets.temperature} Degrees Celsius, {self.fermenter.targets.humidity} Percent Humidity, and finish by {self.fermenter.targets.humidity}"
+                    return self.send_message(chatID, string)
                 
-                elif match.group(2) == "set vent":
-                    return self.send_message(chatID, f"Ventilation set to {match.group(3)} % of the Time Venting")
+                # elif match.group(2) == "set vent":
+                #     return self.send_message(chatID, f"Ventilation set to {match.group(3)} % of the Time Venting")
                 
                 elif match.group(2) == "turn off":
                     self.fermenter.turn_off()
@@ -349,7 +290,7 @@ class ChatBox():
                 
                 elif match.group(2) == "turn on":
                     self.fermenter.turn_on()
-                    return self.send_message(chatID, f"Fermentation Chamber turned off, all bacteria dead")
+                    return self.send_message(chatID, f"Fermentation Chamber turned on, may only good Bacteria grow with you")
                 
                 elif match.group(2) == "history":
                     image = self.fermenter.datalog()
@@ -358,7 +299,7 @@ class ChatBox():
             except ValueError:
                 return self.send_message(chatID, f"specified numeric value for {match.group(2)} wasn't specified correctly\nUse Numeric values without any extra Symbols")
         elif (attempt := re.search(r"^(ferment|fermentation)", text)):
-            return self.send_message(chatID,"Fermentation Chamber Please type one of these commands: *ferment* + \n*set temp- ?* \n*set temp- ?*\n*set humidity- ?*\n*set duration- ?*\n*turn off-*\n*conditions-*\n*set vent- ?*\n*Avoid any °C, % or other Symbols*\nfor example to set the temperature to 25 Degrees, the command woould be *ferment set temp- 25*")
+            return self.send_message(chatID,"Fermentation Chamber Please type one of these commands: *ferment +* \n*set temp- *'your desired temperature between room temperature and 33'\n*set humidity- ...*\n*set duration- * the lenth of the fermentation process in hours\n*turn off-*\n*conditions-*\n*set vent- ?*\n*Avoid any °C, % or other Symbols*\nfor example to set the temperature to 25 Degrees, the command woould be *ferment set temp- 25*\nyou can specify temperature values between your current room climate and 33 degrees Celsius, and humidity values between current and 100%")
         elif re.search(r"^sesam öffne dich", text):
             return self.send_message(chatID, "Schlüssel auf Strasse geworfen")
 
