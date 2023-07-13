@@ -50,7 +50,7 @@ class Fermenter:
         temperature and humidity
         """
         self._on = True
-        self.conditionscontrol = Thread(target=self.reach_conditions)
+        self.conditioncontrol = Thread(target=self.reach_conditions)
         self.conditioncontrol.start()
       
         
@@ -59,6 +59,9 @@ class Fermenter:
         stops all processes
         """
         self._on = False
+        GPIO.output(self.fanpin, GPIO.LOW)
+        GPIO.output(self.heatpin, GPIO.LOW)
+        GPIO.output(self.humiditypin, GPIO.LOW)
 
             
     def current_conditions(self):
@@ -101,7 +104,7 @@ class Fermenter:
         """
         checks if the fermentation process is done
         """
-        if datetime.now() > self.targets.time:
+        if datetime.now() > self.targets.enddate:
             return True
         return False
         
@@ -150,6 +153,11 @@ class Fermenter:
                     GPIO.output(self.humiditypin, GPIO.LOW)
                     
                 time.sleep(5) 
+                
+            GPIO.output(self.fanpin, GPIO.LOW)
+            GPIO.output(self.heatpin, GPIO.LOW)
+            GPIO.output(self.humiditypin, GPIO.LOW)
+                
                     
                     
         except Exception as e:
@@ -167,7 +175,7 @@ class Fermenter:
         dates = []
 
         # Open your CSV file
-        with open('datalog.csv', 'r') as csvfile:
+        with open('__conditionslog.csv', 'r') as csvfile:
             reader = csv.DictReader(csvfile)
             
             for row in reader:
@@ -244,6 +252,12 @@ class ChatBox():
         answer = self.send_requests('messages/chat', data)
         return answer
     
+    def send_image(self, chatID, image_id):
+        data = {"to" : chatID,
+                "image" : "https://images.squarespace-cdn.com/content/v1/588cf719b8a79b901b58ac79/1578928669951-9AOCZPEL5GLMTTK8OLB5/IMG_1160.jpg?format=1000w"}  
+        answer = self.send_requests('messages/image', data)
+        return answer
+    
     
     def processingـincomingـmessages(self):
         """
@@ -259,11 +273,15 @@ class ChatBox():
                 
                 if match.group(2) == "set temp":
                     temptarget = int(match.group(3))
+                    if not 20 < temptarget < 33:
+                        return self.send_message(chatID, f"choose a value between current room conditions and 33")
                     self.fermenter.adjust_targets(temperature = temptarget)
                     return self.send_message(chatID, f"temperature set to {temptarget} Degrees")
                 
                 elif match.group(2) == "set humidity":
                     humidtarget = int(match.group(3))
+                    if not 15 < humidtarget < 100:
+                        return self.send_message(chatID, f"choose a value between current room conditions and 100")
                     self.fermenter.adjust_targets(humidity= humidtarget)
                     return self.send_message(chatID, f"humidity set to {humidtarget} Percent Air Wetness")
                 
@@ -274,8 +292,8 @@ class ChatBox():
                 
                 elif match.group(2) == "conditions":
                     conditions = self.fermenter.current_conditions()
-                    targets = self.fermenter.target()
-                    return self.send_message(chatID, conditions), f"{targets.enddate - conditions.enddate} time left over"
+                    string = f"{conditions.temperature} ° Celsius,\n{conditions.humidity} % Humidity"
+                    return self.send_message(chatID, string)
                 
                 elif match.group(2) == "targets":
                     string = f"Aiming to reach {self.fermenter.targets.temperature} Degrees Celsius, {self.fermenter.targets.humidity} Percent Humidity, and finish by {self.fermenter.targets.humidity}"
@@ -299,7 +317,7 @@ class ChatBox():
             except ValueError:
                 return self.send_message(chatID, f"specified numeric value for {match.group(2)} wasn't specified correctly\nUse Numeric values without any extra Symbols")
         elif (attempt := re.search(r"^(ferment|fermentation)", text)):
-            return self.send_message(chatID,"Fermentation Chamber Please type one of these commands: *ferment +* \n*set temp- *'your desired temperature between room temperature and 33'\n*set humidity- ...*\n*set duration- * the lenth of the fermentation process in hours\n*turn off-*\n*conditions-*\n*set vent- ?*\n*Avoid any °C, % or other Symbols*\nfor example to set the temperature to 25 Degrees, the command woould be *ferment set temp- 25*\nyou can specify temperature values between your current room climate and 33 degrees Celsius, and humidity values between current and 100%")
+            return self.send_message(chatID,"Fermentation Chamber Please type one of these commands: *ferment +* \n*set temp- *'your desired temperature between room temperature and 33'\n*set humidity- ...*\n*set duration- * the lenth of the fermentation process in hours\n*turn on-*\n*turn off-*\n*conditions-*\n\n*Avoid any °C, % or other Symbols*\nfor example to set the temperature to 25 Degrees, the command woould be *ferment set temp- 25*\nyou can specify temperature values between your current room climate and 33 degrees Celsius, and humidity values between current and 100%")
         elif re.search(r"^sesam öffne dich", text):
             return self.send_message(chatID, "Schlüssel auf Strasse geworfen")
 

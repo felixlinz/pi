@@ -3,12 +3,10 @@ import time
 
 fermenter = Fermenter()
 fermenter.turn_on()
+time.sleep(1)
 print(fermenter.targets)
-print(fermenter.conditions)
-time.sleep(2)
-fermenter.turn_off()
-time.sleep(3)
-fermenter.adjust_targets(temperature=20)
+fermenter.adjust_targets(temperature=22)
 print(fermenter.targets)
-fermenter.turn_on()
+time.sleep(10)
+
 
