@@ -9,7 +9,7 @@ import sys
 def main():
     try:
         for arg in sys.argv[1:]:
-            darstellung("roomconditions.csv", arg)
+            darstellung("log.csv", arg)
     except IndexError:
         darstellung("roomconditions.csv")
 

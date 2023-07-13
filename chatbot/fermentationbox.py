@@ -17,7 +17,7 @@ class Fermenter:
     """
     representation of the Fermentain box 
     """
-    def __init__(self, heaptin = 14, fanpin = 15, humiditypin = 13):
+    def __init__(self, heaptin = 14, fanpin = 15, humiditypin = 18):
         self._exceptions = []
         self.logfile = self.empty_logfile()
         GPIO.setmode(GPIO.BCM)
