@@ -287,7 +287,7 @@ class ChatBox():
                 
                 elif match.group(2) == "set duration":
                     durtarget = int(match.group(3))
-                    self.fermenter.adjust_targets(temperature = durtarget)
+                    self.fermenter.adjust_targets(duration = durtarget)
                     return self.send_message(chatID, f"duration set to {durtarget} Hours")
                 
                 elif match.group(2) == "conditions":
@@ -317,7 +317,7 @@ class ChatBox():
             except ValueError:
                 return self.send_message(chatID, f"specified numeric value for {match.group(2)} wasn't specified correctly\nUse Numeric values without any extra Symbols")
         elif (attempt := re.search(r"^(ferment|fermentation)", text)):
-            return self.send_message(chatID,"Fermentation Chamber Please type one of these commands: *ferment +* \n*set temp- *'your desired temperature between room temperature and 33'\n*set humidity- ...*\n*set duration- * the lenth of the fermentation process in hours\n*turn on-*\n*turn off-*\n*conditions-*\n\n*Avoid any °C, % or other Symbols*\nfor example to set the temperature to 25 Degrees, the command woould be *ferment set temp- 25*\nyou can specify temperature values between your current room climate and 33 degrees Celsius, and humidity values between current and 100%")
+            return self.send_message(chatID,"Fermentation Chamber \n Please type one of these commands: \n*ferment +* *set temp-* \n ”your desired temperature between current room temperature and 33”\n*set humidity- ...*\n*set duration-* the lenth of the fermentation process in hours\n*turn on-*\n*turn off-*\n*conditions-*\n\n*Avoid any °C, % or other Symbols*\nfor example to set the temperature to 25 Degrees, the command woould be *ferment set temp- 25*\nyou can specify temperature values between your current room climate and 33 degrees Celsius, and humidity values between current and 100%")
         elif re.search(r"^sesam öffne dich", text):
             return self.send_message(chatID, "Schlüssel auf Strasse geworfen")
 

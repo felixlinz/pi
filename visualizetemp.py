@@ -5,6 +5,7 @@ from datetime import datetime
 import sys
 # the sample method will take a single reading and return a
 
+         
 
 def main():
     try:
@@ -28,7 +29,9 @@ def darstellung(filename, dataseries = None):
     # plt.plot(temps)
     plt.plot(data)
     plt.show()
+    
             
+        
         
 if __name__ == "__main__":
     main()

@@ -7,8 +7,8 @@ app = Flask(__name__)
 fermenter = Fermenter()
 
 
-connection_url = "https://api.ultramsg.com/instance49996/"
-token = "vyijsik2q818dbyp"
+connection_url = "https://api.ultramsg.com/instance54183/"
+token = "rqqfbcl19puuho4x"
 
 @app.route('/', methods=['POST'])
 def home():
