@@ -9,6 +9,22 @@ pre:
 
 1. create instance on "https://user.ultramsg.com/", authenticate via whatsapp etc
 
+install : flask, ngrok
+
+install requests
+install datetime 
+install pygal
+install smbus2
+install json
+install bme280
+install csv
+install time
+install RPi.GPIO 
+install re
+install dataclasses 
+install threading 
+install atexit
+
 2. edit the app.py file in /pi/chatbot to have matching connection url and token as on the website
 
 
